@@ -1,25 +1,186 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useLayoutEffect, useState } from "react";
+import rough from "roughjs/bundled/rough.esm";
 
-function App() {
+const generator = rough.generator();
+
+function createElement(id, x1, y1, x2, y2, type) {
+  const roughElement =
+    type === "line"
+      ? generator.line(x1, y1, x2, y2)
+      : generator.rectangle(x1, y1, x2 - x1, y2 - y1);
+  return { id, x1, y1, x2, y2, type, roughElement };
+}
+
+const nearPoint = (x, y, x1, y1, name) => {
+  return Math.abs(x - x1) < 5 && Math.abs(y - y1) < 5 ? name : null;
+};
+
+function positionWithinElement(x, y, element) {
+  const { type, x1, x2, y1, y2 } = element;
+  if (type === "rectangle") {
+    const topLeft = nearPoint(x, y, x1, y1, "tl");
+    const topRight = nearPoint(x, y, x2, y2, "tr");
+    const bottomLeft = nearPoint(x, y, x1, y1, "bl");
+    const bottomRight = nearPoint(x, y, x2, y2, "br");
+    const inside = x >= x1 && x <= x2 && y >= y1 && y <= y2 ? "inside" : null;
+    return topLeft || topRight || bottomLeft || bottomRight || inside;
+  } else {
+    const a = { x: x1, y: y1 };
+    const b = { x: x2, y: y2 };
+    const c = { x, y };
+    const offset = distance(a, b) - (distance(a, c) + distance(b, c));
+    const start = nearPoint;
+    return Math.abs(offset) < 1 ? "inside" : null;
+  }
+}
+
+const distance = (a, b) =>
+  Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+
+function getElementPosition(x, y, elements) {
+  return elements.find((element) => positionWithinElement(x, y, element));
+}
+
+const adjustElementCoordinates = (element) => {
+  const { type, x1, y1, x2, y2 } = element;
+  if (type === "rectangle") {
+    const minX = Math.min(x1, x2);
+    const maxX = Math.max(x1, x2);
+    const minY = Math.min(y1, y2);
+    const maxY = Math.max(y1, y2);
+    return { x1: minX, y1: minY, x2: maxX, y2: maxY };
+  } else {
+    if (x1 < x2 || (x1 === x2 && y1 < y2)) {
+      return { x1, y1, x2, y2 };
+    } else {
+      return { x1: x2, y1: y2, x2: x1, y2: y1 };
+    }
+  }
+};
+
+const App = () => {
+  const [elements, setElements] = useState([]);
+  const [action, setAction] = useState("none");
+  const [tool, setTool] = useState("line");
+  const [selectedElement, setSelectedElement] = useState(null);
+
+  useLayoutEffect(() => {
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    const roughCanvas = rough.canvas(canvas);
+
+    elements.forEach(({ roughElement }) => roughCanvas.draw(roughElement));
+  }, [elements]);
+
+  const updatedElement = (id, x1, y1, x2, y2, type) => {
+    const updatedElement = createElement(id, x1, y1, x2, y2, type);
+
+    const elementsCopy = [...elements];
+    elementsCopy[id] = updatedElement;
+    setElements(elementsCopy);
+  };
+
+  const handleMouseDown = (event) => {
+    const { clientX, clientY } = event;
+    if (tool === "selection") {
+      const element = getElementPosition(clientX, clientY, elements);
+      if (element) {
+        setSelectedElement(element);
+        setAction("moving");
+      }
+    } else {
+      const id = elements.length;
+      const element = createElement(
+        id,
+        clientX,
+        clientY,
+        clientX,
+        clientY,
+        tool
+      );
+      setElements((prevState) => [...prevState, element]);
+
+      setAction("drawing");
+    }
+  };
+  const handleMouseMove = (event) => {
+    const { clientX, clientY } = event;
+
+    if (tool === "selection") {
+      event.target.style.cursor = getElementPosition(clientX, clientY, elements)
+        ? "move"
+        : "default";
+    }
+
+    if (action === "drawing") {
+      const index = elements.length - 1;
+      const { x1, y1 } = elements[index];
+      updatedElement(index, x1, y1, clientX, clientY, tool);
+    } else if (action === "moving") {
+      const { id, x1, x2, y1, y2, type } = selectedElement;
+      const width = x2 - x1;
+      const height = y2 - y1;
+      updatedElement(
+        id,
+        clientX,
+        clientY,
+        clientX + width,
+        clientY + height,
+        type
+      );
+    }
+  };
+  const handleMouseUp = () => {
+    const index = elements.length - 1;
+    const { id, type } = elements[index];
+
+    if (action === "drawing") {
+      const { x1, y1, x2, y2 } = adjustElementCoordinates(elements[index]);
+      updatedElement(id, x1, y1, x2, y2, type);
+    }
+    setAction("none");
+    setSelectedElement(null);
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <div style={{ position: "fixed" }}>
+        <input
+          type="radio"
+          id="selection"
+          checked={tool === "selection"}
+          onChange={() => setTool("selection")}
+        />
+        <label htmlFor="selection">Selection</label>
+        <input
+          type="radio"
+          id="line"
+          checked={tool === "line"}
+          onChange={() => setTool("line")}
+        />
+        <label htmlFor="line">Line</label>
+        <input
+          type="radio"
+          id="rectangle"
+          checked={tool === "rectangle"}
+          onChange={() => setTool("rectangle")}
+        />
+        <label htmlFor="rectangle">Rectangle</label>
+      </div>
+      <canvas
+        id="canvas"
+        width={window.innerWidth}
+        height={window.innerHeight}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
+        Canvas
+      </canvas>
     </div>
   );
-}
+};
 
 export default App;
