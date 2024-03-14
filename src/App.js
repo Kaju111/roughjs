@@ -19,8 +19,8 @@ function positionWithinElement(x, y, element) {
   const { type, x1, x2, y1, y2 } = element;
   if (type === "rectangle") {
     const topLeft = nearPoint(x, y, x1, y1, "tl");
-    const topRight = nearPoint(x, y, x2, y2, "tr");
-    const bottomLeft = nearPoint(x, y, x1, y1, "bl");
+    const topRight = nearPoint(x, y, x2, y1, "tr");
+    const bottomLeft = nearPoint(x, y, x1, y2, "bl");
     const bottomRight = nearPoint(x, y, x2, y2, "br");
     const inside = x >= x1 && x <= x2 && y >= y1 && y <= y2 ? "inside" : null;
     return topLeft || topRight || bottomLeft || bottomRight || inside;
@@ -29,8 +29,10 @@ function positionWithinElement(x, y, element) {
     const b = { x: x2, y: y2 };
     const c = { x, y };
     const offset = distance(a, b) - (distance(a, c) + distance(b, c));
-    const start = nearPoint;
-    return Math.abs(offset) < 1 ? "inside" : null;
+    const start = nearPoint(x, y, x1, y1, "start");
+    const end = nearPoint(x, y, x2, y2, "end");
+    const inside = Math.abs(offset) < 1 ? "inside" : null;
+    return start || end || inside;
   }
 }
 
@@ -38,7 +40,12 @@ const distance = (a, b) =>
   Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 
 function getElementPosition(x, y, elements) {
-  return elements.find((element) => positionWithinElement(x, y, element));
+  return elements
+    .map((element) => ({
+      ...element,
+      position: positionWithinElement(x, y, element),
+    }))
+    .find((element) => element.position !== null);
 }
 
 const adjustElementCoordinates = (element) => {
@@ -55,6 +62,39 @@ const adjustElementCoordinates = (element) => {
     } else {
       return { x1: x2, y1: y2, x2: x1, y2: y1 };
     }
+  }
+};
+
+const cursorForPosition = (position) => {
+  switch (position) {
+    case "tl":
+    case "br":
+    case "start":
+    case "end":
+      return "nwse-resize";
+    case "tr":
+    case "bl":
+      return "nesw-resize";
+    default:
+      return "move";
+  }
+};
+
+const resizedCoordinates = (clientX, clientY, position, coordinates) => {
+  const { x1, y1, x2, y2 } = coordinates;
+  switch (position) {
+    case "tl":
+    case "start":
+      return { x1: clientX, y1: clientY, x2, y2 };
+    case "tr":
+      return { x1, y1: clientY, x2: clientX, y2 };
+    case "bl":
+      return { x1: clientX, y1, x2, y1: clientY };
+    case "br":
+    case "end":
+      return { x1, y1, x2: clientX, y2: clientY };
+    default:
+      return null;
   }
 };
 
@@ -87,8 +127,15 @@ const App = () => {
     if (tool === "selection") {
       const element = getElementPosition(clientX, clientY, elements);
       if (element) {
-        setSelectedElement(element);
-        setAction("moving");
+        const offsetX = clientX - element.x1;
+        const offsetY = clientY - element.y1;
+        setSelectedElement({ ...element, offsetX, offsetY });
+
+        if (element.position === "inside") {
+          setAction("moving");
+        } else {
+          setAction("resizing");
+        }
       }
     } else {
       const id = elements.length;
@@ -109,8 +156,9 @@ const App = () => {
     const { clientX, clientY } = event;
 
     if (tool === "selection") {
-      event.target.style.cursor = getElementPosition(clientX, clientY, elements)
-        ? "move"
+      const element = getElementPosition(clientX, clientY, elements);
+      event.target.style.cursor = element
+        ? cursorForPosition(element.position)
         : "default";
     }
 
@@ -119,17 +167,21 @@ const App = () => {
       const { x1, y1 } = elements[index];
       updatedElement(index, x1, y1, clientX, clientY, tool);
     } else if (action === "moving") {
-      const { id, x1, x2, y1, y2, type } = selectedElement;
+      const { id, x1, x2, y1, y2, type, offsetX, offsetY } = selectedElement;
       const width = x2 - x1;
       const height = y2 - y1;
-      updatedElement(
-        id,
+      const newX1 = clientX - offsetX;
+      const newY1 = clientY - offsetY;
+      updatedElement(id, newX1, newY1, newX1 + width, newY1 + height, type);
+    } else if (action === "resizing") {
+      const { id, type, position, ...coordinates } = selectedElement;
+      const { x1, y1, x2, y2 } = resizedCoordinates(
         clientX,
         clientY,
-        clientX + width,
-        clientY + height,
-        type
+        position,
+        coordinates
       );
+      updatedElement(id, x1, y1, x2, y2, type);
     }
   };
   const handleMouseUp = () => {
