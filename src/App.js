@@ -98,8 +98,28 @@ const resizedCoordinates = (clientX, clientY, position, coordinates) => {
   }
 };
 
+const useHistory = (initialState) => {
+  const [index, setIndex] = useState(0);
+  const [history, setHistory] = useState([initialState]);
+
+  const setState = (action, overwrite = false) => {
+    const newState =
+      typeof action === "function" ? action(history[index]) : action;
+    if (overwrite) {
+      const historyCopy = [...history];
+      historyCopy[index] = newState;
+      setHistory(historyCopy);
+    } else {
+      setHistory((prevState) => [...prevState, newState]);
+      setIndex((prevState) => prevState + 1);
+    }
+  };
+
+  return [history[index], setState];
+};
+
 const App = () => {
-  const [elements, setElements] = useState([]);
+  const [elements, setElements] = useHistory([]);
   const [action, setAction] = useState("none");
   const [tool, setTool] = useState("line");
   const [selectedElement, setSelectedElement] = useState(null);
@@ -119,7 +139,7 @@ const App = () => {
 
     const elementsCopy = [...elements];
     elementsCopy[id] = updatedElement;
-    setElements(elementsCopy);
+    setElements(elementsCopy, true);
   };
 
   const handleMouseDown = (event) => {
@@ -185,13 +205,16 @@ const App = () => {
     }
   };
   const handleMouseUp = () => {
-    const index = elements.length - 1;
-    const { id, type } = elements[index];
+    if (selectedElement) {
+      const index = elements.length - 1;
+      const { id, type } = elements[index];
 
-    if (action === "drawing") {
-      const { x1, y1, x2, y2 } = adjustElementCoordinates(elements[index]);
-      updatedElement(id, x1, y1, x2, y2, type);
+      if (action === "drawing") {
+        const { x1, y1, x2, y2 } = adjustElementCoordinates(elements[index]);
+        updatedElement(id, x1, y1, x2, y2, type);
+      }
     }
+
     setAction("none");
     setSelectedElement(null);
   };
