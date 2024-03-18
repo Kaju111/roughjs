@@ -4,11 +4,18 @@ import rough from "roughjs/bundled/rough.esm";
 const generator = rough.generator();
 
 function createElement(id, x1, y1, x2, y2, type) {
-  const roughElement =
-    type === "line"
-      ? generator.line(x1, y1, x2, y2)
-      : generator.rectangle(x1, y1, x2 - x1, y2 - y1);
-  return { id, x1, y1, x2, y2, type, roughElement };
+  switch (type) {
+    case "line":
+    case "rectangle":
+      const roughElement =
+        type === "line"
+          ? generator.line(x1, y1, x2, y2)
+          : generator.rectangle(x1, y1, x2 - x1, y2 - y1);
+      return { id, x1, y1, x2, y2, type, roughElement };
+    case "pencil":
+    default:
+      throw new Error(`Type not recognised: ${type}`);
+  }
 }
 
 const nearPoint = (x, y, x1, y1, name) => {
@@ -126,7 +133,7 @@ const useHistory = (initialState) => {
 const App = () => {
   const [elements, setElements, undo, redo] = useHistory([]);
   const [action, setAction] = useState("none");
-  const [tool, setTool] = useState("line");
+  const [tool, setTool] = useState("pencil");
   const [selectedElement, setSelectedElement] = useState(null);
 
   useLayoutEffect(() => {
@@ -266,6 +273,13 @@ const App = () => {
           onChange={() => setTool("rectangle")}
         />
         <label htmlFor="rectangle">Rectangle</label>
+        <input
+          type="radio"
+          id="pencil"
+          checked={tool === "pencil"}
+          onChange={() => setTool("pencil")}
+        />
+        <label htmlFor="pencil">Pencil</label>
       </div>
       <div style={{ position: "fixed", bottom: 0, padding: 10 }}>
         <button onClick={undo}>Undo</button>
