@@ -3,8 +3,22 @@ import rough from "roughjs/bundled/rough.esm";
 import getStroke from "perfect-freehand";
 import { IoIosUndo } from "react-icons/io";
 import { IoIosRedo } from "react-icons/io";
+import { AiFillDelete } from "react-icons/ai";
 
 const generator = rough.generator();
+
+const saveToLocalStorage = (key, data) => {
+  localStorage.setItem(key, JSON.stringify(data));
+};
+
+const loadFromLocalStorage = (key) => {
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : null;
+};
+
+const clearLocalStorageData = (key) => {
+  localStorage.removeItem(key);
+};
 
 const createElement = (id, x1, y1, x2, y2, type) => {
   switch (type) {
@@ -220,7 +234,9 @@ const usePressedKeys = () => {
 };
 
 const App = () => {
-  const [elements, setElements, undo, redo] = useHistory([]);
+  const [elements, setElements, undo, redo] = useHistory(
+    loadFromLocalStorage("elements") || []
+  );
   const [action, setAction] = useState("none");
   const [tool, setTool] = useState("rectangle");
   const [selectedElement, setSelectedElement] = useState(null);
@@ -289,6 +305,10 @@ const App = () => {
       }, 0);
     }
   }, [action, selectedElement]);
+
+  useEffect(() => {
+    saveToLocalStorage("elements", elements);
+  }, [elements]);
 
   const updateElement = (id, x1, y1, x2, y2, type, options) => {
     const elementsCopy = [...elements];
@@ -477,106 +497,106 @@ const App = () => {
     updateElement(id, x1, y1, null, null, type, { text: event.target.value });
   };
 
+  const handleDelete = () => {
+    clearLocalStorageData("elements");
+    setElements([]);
+  };
+
   return (
-    <>
-      <div className="">
+    <div>
+      <div style={{ position: "fixed", zIndex: 2 }}>
         <input
           type="radio"
           id="selection"
           checked={tool === "selection"}
           onChange={() => setTool("selection")}
         />
-        <IoIosUndo />
+        <label htmlFor="selection">Selection</label>
+        <input
+          type="radio"
+          id="line"
+          checked={tool === "line"}
+          onChange={() => setTool("line")}
+        />
+        <label htmlFor="line">Line</label>
+        <input
+          type="radio"
+          id="rectangle"
+          checked={tool === "rectangle"}
+          onChange={() => setTool("rectangle")}
+        />
+        <label htmlFor="rectangle">Rectangle</label>
+        <input
+          type="radio"
+          id="pencil"
+          checked={tool === "pencil"}
+          onChange={() => setTool("pencil")}
+        />
+        <label htmlFor="pencil">Pencil</label>
+        <input
+          type="radio"
+          id="text"
+          checked={tool === "text"}
+          onChange={() => setTool("text")}
+        />
+        <label htmlFor="text">Text</label>
       </div>
-
-      <div className="">
-        <div style={{ position: "fixed", zIndex: 2 }}>
-          <input
-            type="radio"
-            id="selection"
-            checked={tool === "selection"}
-            onChange={() => setTool("selection")}
-          />
-          <label htmlFor="selection">Selection</label>
-          <input
-            type="radio"
-            id="line"
-            checked={tool === "line"}
-            onChange={() => setTool("line")}
-          />
-          <label htmlFor="line">Line</label>
-          <input
-            type="radio"
-            id="rectangle"
-            checked={tool === "rectangle"}
-            onChange={() => setTool("rectangle")}
-          />
-          <label htmlFor="rectangle">Rectangle</label>
-          <input
-            type="radio"
-            id="pencil"
-            checked={tool === "pencil"}
-            onChange={() => setTool("pencil")}
-          />
-          <label htmlFor="pencil">Pencil</label>
-          <input
-            type="radio"
-            id="text"
-            checked={tool === "text"}
-            onChange={() => setTool("text")}
-          />
-          <label htmlFor="text">Text</label>
-        </div>
-        <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
-          <button
-            type="button"
-            class="text-gray-900 hover:text-white border hover:scale-125 border-gray-800 hover:bg-gray-900 hover:duration-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800"
-            onClick={undo}
-          >
-            <IoIosUndo />
-          </button>
-          <button
-            type="button"
-            class="text-gray-900 hover:text-white border border-gray-800 hover:scale-125 hover:bg-gray-900 hover:duration-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800"
-            onClick={redo}
-          >
-            <IoIosRedo />
-          </button>
-        </div>
-        {action === "writing" ? (
-          <textarea
-            ref={textAreaRef}
-            onBlur={handleBlur}
-            style={{
-              position: "fixed",
-              top: selectedElement.y1 - 2 + panOffset.y,
-              left: selectedElement.x1 + panOffset.x,
-              font: "24px sans-serif",
-              margin: 0,
-              padding: 0,
-              border: 0,
-              outline: 0,
-              resize: "auto",
-              overflow: "hidden",
-              whiteSpace: "pre",
-              background: "transparent",
-              zIndex: 2,
-            }}
-          />
-        ) : null}
-        <canvas
-          id="canvas"
-          width={window.innerWidth}
-          height={window.innerHeight}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          style={{ position: "absolute", zIndex: 1 }}
+      <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
+        <button
+          type="button"
+          class="text-gray-900 hover:text-white border hover:scale-125 border-gray-800 hover:bg-gray-900 hover:duration-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800"
+          onClick={undo}
         >
-          Canvas
-        </canvas>
+          <IoIosUndo />
+        </button>
+        <button
+          type="button"
+          class="text-gray-900 hover:text-white border border-gray-800 hover:scale-125 hover:bg-gray-900 hover:duration-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800"
+          onClick={redo}
+        >
+          <IoIosRedo />
+        </button>
+        <button
+          type="button"
+          class="text-gray-900 hover:text-white border border-gray-800 hover:scale-125 hover:bg-gray-900 hover:duration-700 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800"
+          onClick={handleDelete}
+        >
+          <AiFillDelete />
+        </button>
       </div>
-    </>
+      {action === "writing" ? (
+        <textarea
+          ref={textAreaRef}
+          onBlur={handleBlur}
+          style={{
+            position: "fixed",
+            top: selectedElement.y1 - 2 + panOffset.y,
+            left: selectedElement.x1 + panOffset.x,
+            font: "24px sans-serif",
+            margin: 0,
+            padding: 0,
+            border: 0,
+            outline: 0,
+            resize: "auto",
+            overflow: "hidden",
+            whiteSpace: "pre",
+            background: "transparent",
+            zIndex: 2,
+          }}
+        />
+      ) : null}
+      <canvas
+        id="canvas"
+        width={window.innerWidth}
+        height={window.innerHeight}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        style={{ position: "absolute", zIndex: 1 }}
+      >
+        Canvas
+      </canvas>
+    </div>
   );
 };
 
