@@ -504,42 +504,70 @@ const App = () => {
 
   return (
     <div>
-      <div style={{ position: "fixed", zIndex: 2 }}>
+      <div
+        className="mt-3 ml-3 items-center "
+        style={{ position: "fixed", zIndex: 2 }}
+      >
         <input
           type="radio"
           id="selection"
           checked={tool === "selection"}
           onChange={() => setTool("selection")}
         />
-        <label htmlFor="selection">Selection</label>
+        <label
+          className="mr-3 px-2 border-black border rounded-2xl p-1 hover:bg-blue-300"
+          htmlFor="selection"
+        >
+          Selection
+        </label>
         <input
           type="radio"
           id="line"
           checked={tool === "line"}
           onChange={() => setTool("line")}
         />
-        <label htmlFor="line">Line</label>
+        <label
+          className="mr-3 px-2 border-black border rounded-2xl p-1 hover:bg-blue-300"
+          htmlFor="line"
+        >
+          Line
+        </label>
         <input
           type="radio"
           id="rectangle"
           checked={tool === "rectangle"}
           onChange={() => setTool("rectangle")}
         />
-        <label htmlFor="rectangle">Rectangle</label>
+        <label
+          className="mr-3 px-2 border-black border rounded-2xl p-1 hover:bg-blue-300"
+          htmlFor="rectangle"
+        >
+          Rectangle
+        </label>
         <input
           type="radio"
           id="pencil"
           checked={tool === "pencil"}
           onChange={() => setTool("pencil")}
         />
-        <label htmlFor="pencil">Pencil</label>
+        <label
+          className="mr-3 border-black border px-2 rounded-2xl p-1 hover:bg-blue-300"
+          htmlFor="pencil"
+        >
+          Pencil
+        </label>
         <input
           type="radio"
           id="text"
           checked={tool === "text"}
           onChange={() => setTool("text")}
         />
-        <label htmlFor="text">Text</label>
+        <label
+          className="mr-3 px-2 border-black border rounded-2xl p-1 hover:bg-blue-300"
+          htmlFor="text"
+        >
+          Text
+        </label>
       </div>
       <div style={{ position: "fixed", zIndex: 2, bottom: 0, padding: 10 }}>
         <button
